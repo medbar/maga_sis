@@ -1,30 +1,35 @@
 import torch
 import torchaudio
 import numpy as np
+import opensmile 
 
 from collections import namedtuple
 from .scan_data import scan_rootdir, CHANNELS
 from .load_data import load_anno_tensor, load_vad_df
 from .segment_data import SegmentEgs
 
-class ChunkDataSet:
+class ChunkOpenSmileDataSet:
     def __init__(self, rootdir, 
                  channels=CHANNELS, 
-                 transform=torchaudio.transforms.MFCC(n_mfcc=40), # n_mfcc=80, melkwargs={'n_fft': 1280}
+                 #transform=torchaudio.transforms.MFCC(n_mfcc=40), # n_mfcc=80, melkwargs={'n_fft': 1280}
                 feats2anno_rate=1,
                 chunk_size_s=2,
                 chunk_hop_s=1, use_vad=True):
         """ feats2anno_rate = feats_sr / anno_sr """
         self.rootdir = rootdir
         self.channels = channels
-        self.transform = transform
+        self.transform = opensmile.Smile(
+                feature_set=opensmile.FeatureSet.ComParE_2016,
+                feature_level=opensmile.FeatureLevel.Functionals)
+        
+        #self.transform = transform
         self.feats2anno_rate = feats2anno_rate
         self.finfos = scan_rootdir(rootdir, channels)
         preloaded_annos = [load_anno_tensor(f.anno[0]) for f in self.finfos]
         self.segments = []
         Chunk = namedtuple('Chunk', ['start_sec', 'end_sec'])
         for f, p_a in zip(self.finfos, preloaded_annos):
-            if use_vad:
+            if use_vad and f.vad:
                 for _, row in load_vad_df(f.vad).iterrows():
                     start = row.start_sec
                     #row.end_sec
@@ -56,7 +61,11 @@ class ChunkDataSet:
 
     def __getitem__(self, index):
         seq = self.segments[index]
-        feats = self.transform(seq.wav).squeeze() # featsXtime
+        wav_keeper = seq.wav_keeper
+        feats = self.transform.process_file(wav_keeper.wav_fname, 
+                                           start=wav_keeper.start_sec,
+                                           end = wav_keeper.end_sec).values# 1 X feats
+        feats = torch.from_numpy(feats).T # feats X 1 
         anno = seq.anno.mean(dim=-2)
         #corr_anno_len = round(feats.shape[-1] / self.feats2anno_rate)
 #         if abs(anno.shape[0] - corr_anno_len) > 2:

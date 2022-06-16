@@ -23,7 +23,8 @@ def collate_with_paddings(samples):
     pad = [item['padding'] for item in samples]
     indices = [item['index'] for item in samples]
     x_batch = pad_sequence(x, batch_first=True, padding_value=0.0).transpose(-2, -1) # btz X feats X time
-    y_batch = pad_sequence(y, batch_first=True, padding_value=0)
+    #y_batch = pad_sequence(y, batch_first=True, padding_value=0)
+    y_batch = torch.cat(y)
     pad_batch = pad_sequence(pad, batch_first=True, padding_value=0)
     batch = {'feats': x_batch, 
             'labels': y_batch, 

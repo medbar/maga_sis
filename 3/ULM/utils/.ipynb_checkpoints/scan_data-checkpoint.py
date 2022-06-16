@@ -31,6 +31,13 @@ class DataFolderMetaInfo:
                    anno=anno,
                    vad=vad,
                    annotator=aor)
+    
+    def is_correct(self):
+        if self.anno[0] is not None and self.wav[0] is not None:
+            return True
+        else:
+            print(f"Warning: {self.data_dir} is not correct")
+            return False
 
 
 def get_wav_fname(data_dir: str, channel: str) -> Tuple[str, int]:
@@ -38,7 +45,10 @@ def get_wav_fname(data_dir: str, channel: str) -> Tuple[str, int]:
     :channel: expert or novice
     :return: (wav file name, sample rate) """
     for sr in [16000, 48000]:
-        wav = os.path.join(data_dir, f'{channel}.audio[48000]_clean.wav')
+        wav = os.path.join(data_dir, f'{channel}.audio[{sr}]_clean.wav')
+        if os.path.exists(wav):
+            return wav, sr
+        wav = os.path.join(data_dir, f'{channel}.audio[{sr}].wav')
         if os.path.exists(wav):
             return wav, sr
     raise RuntimeError(f"Didn't find wav for {data_dir} {channel}")
@@ -47,10 +57,19 @@ def get_anno_fname(data_dir: str, channel: str) -> Tuple[str, int, str]:
     """ Getting annotanion file name for specific channel
     :channel: expert or novice
     :return: (annotation file name, annotation sample rate, annotator name) """
-    for a in ANNOTATORS:
-        anno = os.path.join(data_dir, f'engagement_{channel}{a}.annotation~')
-        if os.path.exists(anno):
-            return anno, ANNO_SR, a
+    anno = os.path.join(data_dir, f'annotation_{channel}.txt')
+    if os.path.exists(anno):
+        return anno, ANNO_SR, 'gold_standard'
+    print(f"Didn't find ANNO for {data_dir} {channel}.")
+    return None, None, None
+    
+    
+#     for a in ANNOTATORS:
+#         anno = os.path.join(data_dir, f'engagement_{channel}{a}.annotation~')
+#         if os.path.exists(anno):
+#             return anno, ANNO_SR, a
+    
+    
     raise RuntimeError(f"Didn't find annotaitor for {data_dir} {channel}")
 
 def get_vad_fname(data_dir: str, channel: str) -> str:
@@ -60,10 +79,12 @@ def get_vad_fname(data_dir: str, channel: str) -> str:
     vad = os.path.join(data_dir, f"VAD_{channel}.annotation~")
     if os.path.exists(vad):
         return vad
-    raise RuntimeError(f"Didn't find VAD for {data_dir} {channel}")
+    return None
+    #raise RuntimeError(f"Didn't find VAD for {data_dir} {channel}")
     
 
 def scan_rootdir(rootdir: str, channels=CHANNELS) -> List[DataFolderMetaInfo]:
     """Return List of DataFolderMetaInfo"""
-    return [DataFolderMetaInfo.build_from_dir(d, c) for d in glob(f'{rootdir}/*') 
-                                                     for c in channels]
+    data = (DataFolderMetaInfo.build_from_dir(d, c) for d in glob(f'{rootdir}/*') 
+                                                     for c in channels if os.path.isdir(d))
+    return [i for i in data if i.is_correct()]

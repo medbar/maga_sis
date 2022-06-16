@@ -34,14 +34,14 @@ class SegmentsDataSet:
         seq = self.segments[index]
         feats = self.transform(seq.wav).squeeze() # featsXtime
         anno = seq.anno
-        corr_anno_len = round(feats.shape[-1] / self.feats2anno_rate)
-        if abs(anno.shape[0] - corr_anno_len) > 2:
-            print(f"WARNING: element {index}, {anno.shape[0]=} ({corr_anno_len=}), {feats.shape[-1]=}, {self.feats2anno_rate=}")
-        anno = anno[:corr_anno_len]
-        corr_feats_len = round(anno.shape[0] * self.feats2anno_rate)
-        feats = feats[:, :corr_feats_len]
+        #corr_anno_len = round(feats.shape[-1] / self.feats2anno_rate)
+        #if abs(anno.shape[0] - corr_anno_len) > 2:
+        #    print(f"WARNING: element {index}, {anno.shape[0]=} ({corr_anno_len=}), {feats.shape[-1]=}, {self.feats2anno_rate=}")
+        #anno = anno[:corr_anno_len]
+        #corr_feats_len = round(anno.shape[0] * self.feats2anno_rate)
+        #feats = feats[:, :corr_feats_len]
         return {'feats': feats, 
                 'labels': anno, 
-                'padding': torch.ones_like(anno),
+                'padding': torch.ones(anno.shape[0]),
                 'index': index}
 
